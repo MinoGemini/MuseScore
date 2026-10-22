@@ -8,6 +8,9 @@ const MuApi = {
 
     // Export score
     exportScore: MuImpl.exportScore,
+
+    // Actions (playback etc.)
+    dispatch: MuImpl.dispatch,
 }
 
 async function createMuApi(config) {

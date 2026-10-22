@@ -179,6 +179,11 @@ void WebApi::exportScore(const std::string& suffix)
     callJsWithBytes("onScoreExported", data.constData(), data.size());
 }
 
+void WebApi::dispatch(const std::string& actionCode)
+{
+    dispatcher()->dispatch(actionCode);
+}
+
 void WebApi::onProjectSaved(const muse::io::path_t& path, mu::project::SaveMode)
 {
     IF_ASSERT_FAILED(io::File::exists(path)) {

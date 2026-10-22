@@ -1,4 +1,10 @@
 <!doctype html>
+<!--
+  Test page for the web API (muapi.js).
+  Opens a score on startup (?score=test/<file>, default test/score.mscz) and
+  offers export and playback controls. #audio-peak shows the loudest output
+  sample seen so far, so playback can be checked without listening.
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -15,9 +21,38 @@
     <button id="export-musicxml">Export MusicXML</button>
     <button id="export-mxl">Export MXL</button>
     <span id="export-status"></span>
+    <button id="play">Play</button>
+    <button id="stop">Stop</button>
+    <span>audio: <span id="audio-state">none</span>, peak <span id="audio-peak">0</span></span>
   </div>
   <div id="screen"></div>
   <pre id="export-result"></pre>
+  <script>
+    // Meter the app's audio output: insert an analyser in front of the
+    // destination of whichever node the audio driver connects to it.
+    (() => {
+      const connect = AudioNode.prototype.connect;
+      let peak = 0;
+      AudioNode.prototype.connect = function(destination, ...rest) {
+        if (destination instanceof AudioDestinationNode && !this.__metered) {
+          this.__metered = true;
+          const analyser = this.context.createAnalyser();
+          analyser.fftSize = 2048;
+          connect.call(this, analyser);
+          const samples = new Float32Array(analyser.fftSize);
+          setInterval(() => {
+            analyser.getFloatTimeDomainData(samples);
+            for (const s of samples) peak = Math.max(peak, Math.abs(s));
+            const peakEl = document.querySelector("#audio-peak");
+            peakEl.textContent = peak.toFixed(4);
+            peakEl.dataset.state = peak > 0.001 ? "sound" : "silent";
+            document.querySelector("#audio-state").textContent = this.context.state;
+          }, 100);
+        }
+        return connect.call(this, destination, ...rest);
+      };
+    })();
+  </script>
   <script type="module">
     import createMuApi from "./distr/muapi.js";
     const params = new URLSearchParams(location.search);
@@ -35,7 +70,6 @@
         result.textContent = head;
         status.textContent = `${format}: ${bytes.length} bytes`;
         result.dataset.state = "done";
-        // Offer the file the same way a user-facing export would.
         const a = document.createElement("a");
         a.href = URL.createObjectURL(new Blob([bytes]));
         a.download = `export.${format}`;
@@ -47,9 +81,12 @@
     }
     document.querySelector("#export-musicxml").onclick = () => runExport("musicxml");
     document.querySelector("#export-mxl").onclick = () => runExport("mxl");
+    document.querySelector("#play").onclick = () => window.muapi.dispatch("play");
+    document.querySelector("#stop").onclick = () => window.muapi.dispatch("stop");
 
     window.muapi = await createMuApi({
       screen: document.querySelector("#screen"),
+      preload: ["sound/preload.json"],
       onLoaded: async () => {
         document.body.dataset.state = "app-ready";
         setTimeout(async () => {

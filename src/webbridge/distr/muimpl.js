@@ -32,6 +32,9 @@ const MuImpl = {
                 onExit: config.onExit,
                 entryFunction: window.MuseScoreStudio_entry, // from MuseScoreStudio.js
                 containerElements: [config.screen],
+                // JSON files listing {source, destination} pairs copied into the
+                // in-memory file system before startup, e.g. the playback soundfont
+                preload: config.preload ?? [],
             }
         });
 
@@ -51,12 +54,14 @@ const MuImpl = {
 
     // The file name's suffix selects the reader: mscz, mscx, musicxml, mxl, xml...
     loadScoreData: function(data, fileName = "current.mscz") {
-        const ptr = this.Module._malloc(data.length);
+        // Allocate through the API's own exports: _malloc is not exported in threaded builds
+        const ptr = this.Module._webapiAlloc(data.length);
         try {
+            // Read HEAPU8 after allocating, since the allocation may grow the memory
             this.Module.HEAPU8.set(data, ptr);
             this.Module.ccall("loadFile", null, ["string", "number", "number"], [fileName, ptr, data.length]);
         } finally {
-            this.Module._free(ptr);
+            this.Module._webapiFree(ptr);
         }
     },
 
@@ -72,6 +77,11 @@ const MuImpl = {
             Module.onScoreExportFailed = (message) => { done(); reject(new Error(message)); };
             Module.ccall("exportScore", null, ["string"], [format]);
         });
+    },
+
+    // Runs an application action by its code, e.g. "play", "stop", "rewind"
+    dispatch: function(actionCode) {
+        this.Module.ccall("dispatch", null, ["string"], [actionCode]);
     },
 }
 

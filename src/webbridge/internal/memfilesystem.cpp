@@ -21,6 +21,8 @@
  */
 #include "memfilesystem.h"
 
+#include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 
@@ -140,11 +142,50 @@ muse::RetVal<uint64_t> MemFileSystem::fileSize(const muse::io::path_t& path) con
     }
 }
 
-muse::RetVal<muse::io::paths_t> MemFileSystem::scanFiles(const muse::io::path_t& /*rootDir*/, const std::vector<std::string>& /*filters*/,
-                                                         muse::io::ScanMode /*mode*/) const
+muse::RetVal<muse::io::paths_t> MemFileSystem::scanFiles(const muse::io::path_t& rootDir, const std::vector<std::string>& filters,
+                                                         muse::io::ScanMode mode) const
 {
-    NOT_IMPLEMENTED;
-    return muse::make_ret(muse::Ret::Code::NotImplemented);
+    const bool recursive = mode == muse::io::ScanMode::FilesInCurrentDirAndSubdirs;
+    const QString root = QDir::cleanPath(rootDir.toQString());
+
+    QStringList nameFilters;
+    for (const std::string& f : filters) {
+        nameFilters << QString::fromStdString(f);
+    }
+
+    auto matches = [&nameFilters](const QString& fileName) {
+        return nameFilters.isEmpty() || QDir::match(nameFilters, fileName);
+    };
+
+    muse::io::paths_t result;
+
+    //! NOTE Files written through this file system
+    for (const auto& entry : m_files) {
+        const QFileInfo fi(entry.first.toQString());
+        const QString dir = QDir::cleanPath(fi.path());
+        const bool inScope = dir == root || (recursive && dir.startsWith(root + "/"));
+        if (inScope && matches(fi.fileName())) {
+            result.push_back(entry.first);
+        }
+    }
+
+    //! NOTE Files placed directly in the Emscripten file system, e.g. preloaded soundfonts
+    if (QFileInfo(root).isDir()) {
+        QDir::Filters entryFilters = QDir::Files | QDir::NoDotAndDotDot;
+        if (mode == muse::io::ScanMode::FilesAndFoldersInCurrentDir) {
+            entryFilters |= QDir::Dirs;
+        }
+
+        QDirIterator it(root, nameFilters, entryFilters, recursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags);
+        while (it.hasNext()) {
+            const muse::io::path_t path = it.next();
+            if (!muse::contains(m_files, path)) {
+                result.push_back(path);
+            }
+        }
+    }
+
+    return muse::RetVal<muse::io::paths_t>::make_ok(result);
 }
 
 void MemFileSystem::setAttribute(const muse::io::path_t& /*path*/, Attribute /*attribute*/) const

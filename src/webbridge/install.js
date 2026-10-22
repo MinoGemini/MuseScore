@@ -44,3 +44,18 @@ fs.mkdirSync(OUTPUT_DIR+"/test", { recursive: true });
 copyFile(ROOT+"/vtest/scores/beams-21.mscz", OUTPUT_DIR+"/test/score.mscz");
 copyFile(ROOT+"/src/importexport/musicxml/tests/data/testBeams1.xml", OUTPUT_DIR+"/test/beams1.musicxml");
 
+// Playback soundfont (downloaded at configure time by MUE_DOWNLOAD_SOUNDFONT).
+// Pass "sound/preload.json" in createMuApi({ preload }) to place it where the
+// audio module looks for soundfonts (the app data path, /files/share on the web).
+const SOUNDFONT = ROOT+"/share/sound/MS Basic.sf3"
+if (fs.existsSync(SOUNDFONT)) {
+    fs.mkdirSync(OUTPUT_DIR+"/sound", { recursive: true });
+    copyFile(SOUNDFONT, OUTPUT_DIR+"/sound/MS_Basic.sf3");
+    copyFile(ROOT+"/share/sound/MS Basic_License.md", OUTPUT_DIR+"/sound/MS_Basic_License.md");
+    fs.writeFileSync(OUTPUT_DIR+"/sound/preload.json", JSON.stringify([
+        { source: "sound/MS_Basic.sf3", destination: "/files/share/sound/MS Basic.sf3" },
+    ], null, 2));
+} else {
+    console.warn("warning: " + SOUNDFONT + " not found; playback will have no soundfont")
+}
+

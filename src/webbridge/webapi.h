@@ -57,6 +57,9 @@ public:
     //! and reports the result through Module.onScoreExported or Module.onScoreExportFailed
     void exportScore(const std::string& suffix);
 
+    //! NOTE Runs an application action by its code (e.g. "play", "stop", "rewind")
+    void dispatch(const std::string& actionCode);
+
 private:
 
     void onProjectSaved(const muse::io::path_t& path, mu::project::SaveMode mode);

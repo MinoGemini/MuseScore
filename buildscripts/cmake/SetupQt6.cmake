@@ -94,6 +94,14 @@ endif()
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS ${qt_components})
 
+if (OS_IS_WASM AND QT_FEATURE_thread)
+    # Qt adds -pthread only to targets that link Qt. Every object must be built
+    # with it (atomics, bulk memory), or wasm-ld rejects the shared memory link,
+    # so apply it to third-party C libraries such as freetype and fluidsynth too.
+    message(STATUS "Qt for WebAssembly with threads: compiling everything with -pthread")
+    add_compile_options("SHELL:-pthread")
+endif()
+
 include(QtInstallPaths)
 
 message(STATUS "Qt version: ${Qt6_VERSION}")
