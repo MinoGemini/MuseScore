@@ -19,6 +19,10 @@ set(FLUIDSYNTH_DEF
     -DNO_THREADS
     )
 
+if (OS_IS_WASM)
+    list(APPEND FLUIDSYNTH_DEF -DFLUID_SF3_USE_STB_VORBIS)
+endif()
+
 set(FLUIDSYNTH_SRC
     # ${FLUIDSYNTH_DIR}/src/fluidsynth.c
     ${FLUIDSYNTH_DIR}/src/external/fluidsynthconfig.h

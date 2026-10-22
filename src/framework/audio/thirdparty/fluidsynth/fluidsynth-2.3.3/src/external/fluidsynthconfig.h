@@ -155,7 +155,10 @@
 /* #undef LIBSNDFILE_HASVORBIS */
 
 /* Define to enable libsndfile support */
+/* MuseScore: builds that decode SF3 with stb_vorbis do not link libsndfile */
+#ifndef FLUID_SF3_USE_STB_VORBIS
 #define LIBSNDFILE_SUPPORT 1
+#endif
 
 /* Define to enable MidiShare driver */
 /* #undef MIDISHARE_SUPPORT */

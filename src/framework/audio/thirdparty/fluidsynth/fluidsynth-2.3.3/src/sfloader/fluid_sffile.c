@@ -680,7 +680,7 @@ static int process_info(SFData *sf, int size)
 
             if(sf->version.major == 3)
             {
-#if !LIBSNDFILE_SUPPORT
+#if !LIBSNDFILE_SUPPORT && !defined(FLUID_SF3_USE_STB_VORBIS)
                 FLUID_LOG(FLUID_WARN,
                           "Sound font version is %d.%d but fluidsynth was compiled without"
                           " support for (v3.x)",
@@ -2518,6 +2518,91 @@ error_exit:
     FLUID_FREE(wav_data);
     sf_close(sndfile);
     return -1;
+}
+#elif defined(FLUID_SF3_USE_STB_VORBIS)
+/* MuseScore: decode SF3 samples with stb_vorbis, which the audio worker already
+ * compiles, so that builds without libsndfile (the web app) can load SF3 fonts. */
+extern int stb_vorbis_decode_memory(const unsigned char *mem, int len, int *channels, int *sample_rate, short **output);
+
+static int fluid_sffile_read_vorbis(SFData *sf, unsigned int start_byte, unsigned int end_byte, short **data)
+{
+    unsigned char *compressed;
+    short *decoded = NULL;
+    short *wav_data;
+    int length;
+    int channels = 0;
+    int sample_rate = 0;
+    int frames;
+    int read_ok;
+
+    if((start_byte > sf->samplesize) || (end_byte > sf->samplesize) || (end_byte < start_byte))
+    {
+        FLUID_LOG(FLUID_ERR, "Ogg Vorbis data offsets exceed sample data chunk");
+        return -1;
+    }
+
+    /* end_byte is inclusive, as in the libsndfile reader above */
+    length = (int)(end_byte - start_byte) + 1;
+    compressed = FLUID_ARRAY(unsigned char, length);
+
+    if(!compressed)
+    {
+        FLUID_LOG(FLUID_ERR, "Out of memory");
+        return -1;
+    }
+
+    fluid_rec_mutex_lock(sf->mtx);
+    read_ok = sf->fcbs->fseek(sf->sffd, sf->samplepos + start_byte, SEEK_SET) != FLUID_FAILED
+              && sf->fcbs->fread(compressed, length, sf->sffd) != FLUID_FAILED;
+    fluid_rec_mutex_unlock(sf->mtx);
+
+    if(!read_ok)
+    {
+        FLUID_LOG(FLUID_ERR, "Failed to read compressed sample data");
+        FLUID_FREE(compressed);
+        return -1;
+    }
+
+    frames = stb_vorbis_decode_memory(compressed, length, &channels, &sample_rate, &decoded);
+    FLUID_FREE(compressed);
+
+    if(frames < 0)
+    {
+        FLUID_LOG(FLUID_ERR, "Failed to decode Ogg Vorbis sample");
+        free(decoded);
+        return -1;
+    }
+
+    if(frames == 0 || channels <= 0)
+    {
+        FLUID_LOG(FLUID_DBG, "Empty decompressed sample");
+        free(decoded);
+        *data = NULL;
+        return 0;
+    }
+
+    if(channels != 1)
+    {
+        FLUID_LOG(FLUID_DBG, "Unsupported channel count %d in ogg sample", channels);
+        free(decoded);
+        return -1;
+    }
+
+    /* stb_vorbis allocates with malloc(); hand fluidsynth memory from its own allocator */
+    wav_data = FLUID_ARRAY(short, frames);
+
+    if(!wav_data)
+    {
+        FLUID_LOG(FLUID_ERR, "Out of memory");
+        free(decoded);
+        return -1;
+    }
+
+    FLUID_MEMCPY(wav_data, decoded, frames * sizeof(short));
+    free(decoded);
+
+    *data = wav_data;
+    return frames;
 }
 #else
 static int fluid_sffile_read_vorbis(SFData *sf, unsigned int start_byte, unsigned int end_byte, short **data)

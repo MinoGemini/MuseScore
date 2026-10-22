@@ -53,7 +53,11 @@ set(MODULE_SRC
     )
 
 # fluidsynth dependency
-include(SetupSndFile)
+# On the web, SF3 samples are decoded with stb_vorbis (compiled into the audio
+# worker) instead of libsndfile; see FLUID_SF3_USE_STB_VORBIS in fluidsynth.cmake.
+if (NOT OS_IS_WASM)
+    include(SetupSndFile)
+endif()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/thirdparty/fluidsynth fluidsynth)
 
