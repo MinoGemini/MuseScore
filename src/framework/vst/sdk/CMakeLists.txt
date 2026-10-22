@@ -27,7 +27,9 @@ else()
     # If not set MUSE_MODULE_VST_VST3_SDK_PATH
     # download vst3sdk source
 
-    set(REMOTE_ROOT_URL https://raw.githubusercontent.com/musescore/muse_deps/main)
+    # muse_deps/main was restructured; pin the legacy layout this release expects.
+
+    set(REMOTE_ROOT_URL https://raw.githubusercontent.com/musescore/muse_deps/c9a299e19df04e40435d1c4649548c69ce152bd8)
     set(remote_url ${REMOTE_ROOT_URL}/vst3sdk/v3.7.12_build_20)
     set(local_path ${PROJECT_BINARY_DIR}/_deps/vst3sdk)
     if (NOT EXISTS ${local_path}/vst3sdk.cmake)
