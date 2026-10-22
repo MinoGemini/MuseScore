@@ -25,25 +25,54 @@
 #include "../../../iaudiodriver.h"
 
 namespace muse::audio {
+//! NOTE Plays through a Web Audio AudioContext. The browser owns the output
+//! device and the sample rate; the buffer size is the ScriptProcessor's.
+//! All calls must happen on the browser's main thread.
 class WebAudioDriver : public IAudioDriver
 {
 public:
-    WebAudioDriver();
+    WebAudioDriver() = default;
+
+    void init() override;
 
     std::string name() const override;
     bool open(const Spec& spec, Spec* activeSpec) override;
     void close() override;
     bool isOpened() const override;
+
+    const Spec& activeSpec() const override;
+
+    AudioDeviceID outputDevice() const override;
+    bool selectOutputDevice(const AudioDeviceID& id) override;
+    bool resetToDefaultOutputDevice() override;
+    async::Notification outputDeviceChanged() const override;
+
+    AudioDeviceList availableOutputDevices() const override;
+    async::Notification availableOutputDevicesChanged() const override;
+
+    unsigned int outputDeviceBufferSize() const override;
+    bool setOutputDeviceBufferSize(unsigned int bufferSize) override;
+    async::Notification outputDeviceBufferSizeChanged() const override;
+    std::vector<unsigned int> availableOutputDeviceBufferSizes() const override;
+
+    unsigned int outputDeviceSampleRate() const override;
+    bool setOutputDeviceSampleRate(unsigned int sampleRate) override;
+    async::Notification outputDeviceSampleRateChanged() const override;
+    std::vector<unsigned int> availableOutputDeviceSampleRates() const override;
+
     void resume() override;
     void suspend() override;
 
-    std::string outputDevice() const override;
-    bool selectOutputDevice(const std::string& name) override;
-    std::vector<std::string> availableOutputDevices() const override;
-    async::Notification availableOutputDevicesChanged() const override;
-
 private:
+    bool reopen();
+
+    Spec m_activeSpec;
     bool m_opened = false;
+
+    async::Notification m_outputDeviceChanged;
+    async::Notification m_availableOutputDevicesChanged;
+    async::Notification m_bufferSizeChanged;
+    async::Notification m_sampleRateChanged;
 };
 }
 

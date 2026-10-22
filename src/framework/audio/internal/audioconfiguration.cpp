@@ -60,7 +60,9 @@ void AudioConfiguration::init()
 {
     int defaultBufferSize = 0;
 #if defined(Q_OS_WASM)
-    defaultBufferSize = 8192;
+    //! NOTE The ScriptProcessor runs on the busy browser main thread, so keep a
+    //! large buffer, but below the worker's AudioBuffer capacity (8192 per channel)
+    defaultBufferSize = 4096;
 #else
     defaultBufferSize = 1024;
 #endif
