@@ -370,24 +370,32 @@ bool Logger::isType(const Type& type) const
     return false;
 }
 
+// The destination list is guarded by the same mutex as write(), which other
+// threads (e.g. the audio worker) call concurrently. Once removeDest() returns,
+// no thread is still writing to that destination, so the caller may delete it.
+
 void Logger::addDest(LogDest* dest)
 {
     assert(dest);
+    std::lock_guard locker(m_mutex);
     m_dests.push_back(dest);
 }
 
 void Logger::removeDest(LogDest* dest)
 {
+    std::lock_guard locker(m_mutex);
     m_dests.erase(std::remove(m_dests.begin(), m_dests.end(), dest), m_dests.end());
 }
 
 std::vector<LogDest*> Logger::dests() const
 {
+    std::lock_guard locker(m_mutex);
     return m_dests;
 }
 
 void Logger::clearDests()
 {
+    std::lock_guard locker(m_mutex);
     for (LogDest* d : m_dests) {
         delete d;
     }
