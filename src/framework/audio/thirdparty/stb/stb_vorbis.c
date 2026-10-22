@@ -3642,8 +3642,14 @@ static int start_decoder(vorb *f)
    f->vendor[len] = (char)'\0';
    //user comments
    f->comment_list_length = get32_packet(f);
-   f->comment_list = (char**)setup_malloc(f, sizeof(char*) * (f->comment_list_length));
-   if (f->comment_list == NULL)                     return error(f, VORBIS_outofmem);
+   f->comment_list = NULL;
+   // MuseScore: backport of the upstream v1.21 fix. setup_malloc(0) returns NULL,
+   // so streams without user comments (e.g. the MS Basic SF3 samples) failed
+   // to open with VORBIS_outofmem.
+   if (f->comment_list_length > 0) {
+      f->comment_list = (char**)setup_malloc(f, sizeof(char*) * (f->comment_list_length));
+      if (f->comment_list == NULL)                  return error(f, VORBIS_outofmem);
+   }
 
    for(i=0; i < f->comment_list_length; ++i) {
       len = get32_packet(f);
