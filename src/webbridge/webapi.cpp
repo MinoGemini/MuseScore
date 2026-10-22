@@ -27,24 +27,49 @@
 #endif
 
 #include "global/io/file.h"
+#include "global/io/buffer.h"
 
 #include "log.h"
 
 using namespace muse;
 using namespace mu::webbridge;
 
+static const io::path_t TEMP_DIR = "/mu/temp/";
+
 #ifdef Q_OS_WASM
 static void callJsWithBytes(const char* fnname, const uint8_t* data, size_t size)
 {
+    emscripten::val fn = emscripten::val::module_property(fnname);
+    if (fn.isUndefined()) {
+        LOGW() << "Module." << fnname << " is not set";
+        return;
+    }
+
     emscripten::val jsArray = emscripten::val::global("Uint8Array").new_(
         emscripten::typed_memory_view(size, data)
         );
 
-    emscripten::val::module_property(fnname)(jsArray);
+    fn(jsArray);
+}
+
+static void callJsWithText(const char* fnname, const std::string& text)
+{
+    emscripten::val fn = emscripten::val::module_property(fnname);
+    if (fn.isUndefined()) {
+        LOGW() << "Module." << fnname << " is not set";
+        return;
+    }
+
+    fn(text);
 }
 
 #else
 static void callJsWithBytes(const char*, const uint8_t*, size_t)
+{
+    NOT_SUPPORTED;
+}
+
+static void callJsWithText(const char*, const std::string&)
 {
     NOT_SUPPORTED;
 }
@@ -93,17 +118,65 @@ void WebApi::onclickTest1(int num)
 
 void WebApi::load(const void* source, unsigned int len)
 {
-    LOGI() << source << ", len: " << len;
-    ByteArray data = ByteArray::fromRawData(reinterpret_cast<const char*>(source), len);
-    io::path_t tempFilePath = "/mu/temp/current.mscz";
+    loadFile("current.mscz", source, len);
+}
 
-    //! NOTE Remove last previous
+void WebApi::loadFile(const std::string& fileName, const void* source, unsigned int len)
+{
+    LOGI() << fileName << ", len: " << len;
+
+    //! NOTE Keep only the file name, so a caller-supplied path cannot leave the temp directory
+    const io::path_t name = io::filename(io::path_t(fileName));
+    if (name.empty() || io::suffix(name).empty()) {
+        LOGE() << "file name must have a suffix that selects the reader: " << fileName;
+        return;
+    }
+
+    const io::path_t tempFilePath = TEMP_DIR + name;
+
+    //! NOTE Remove the previous file, which may have had another name
+    if (!m_lastLoadedPath.empty()) {
+        io::File::remove(m_lastLoadedPath);
+    }
     io::File::remove(tempFilePath);
 
-    //! NOTE Write new project
-    io::File::writeFile(tempFilePath, data);
+    ByteArray data = ByteArray::fromRawData(reinterpret_cast<const char*>(source), len);
+    Ret ret = io::File::writeFile(tempFilePath, data);
+    if (!ret) {
+        LOGE() << "failed write file, path: " << tempFilePath << ", err: " << ret.toString();
+        return;
+    }
+    m_lastLoadedPath = tempFilePath;
 
     dispatcher()->dispatch("file-open", actions::ActionData::make_arg1(QUrl::fromLocalFile(tempFilePath.toQString())));
+}
+
+void WebApi::exportScore(const std::string& suffix)
+{
+    notation::INotationPtr notation = globalContext()->currentNotation();
+    if (!notation) {
+        callJsWithText("onScoreExportFailed", "no score is open");
+        return;
+    }
+
+    project::INotationWriterPtr writer = writers()->writer(suffix);
+    if (!writer) {
+        callJsWithText("onScoreExportFailed", "unsupported export format: " + suffix);
+        return;
+    }
+
+    io::Buffer buffer;
+    buffer.open(io::IODevice::WriteOnly);
+    Ret ret = writer->write(notation, buffer);
+    buffer.close();
+
+    if (!ret) {
+        callJsWithText("onScoreExportFailed", "export failed: " + ret.toString());
+        return;
+    }
+
+    const ByteArray& data = buffer.data();
+    callJsWithBytes("onScoreExported", data.constData(), data.size());
 }
 
 void WebApi::onProjectSaved(const muse::io::path_t& path, mu::project::SaveMode)

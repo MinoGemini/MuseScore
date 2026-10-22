@@ -46,14 +46,32 @@ const MuImpl = {
         }
 
         const buffer = await file.arrayBuffer();
-        this.loadScoreData(new Uint8Array(buffer)) 
+        this.loadScoreData(new Uint8Array(buffer), file.name)
     },
 
-    loadScoreData: function(data) {
+    // The file name's suffix selects the reader: mscz, mscx, musicxml, mxl, xml...
+    loadScoreData: function(data, fileName = "current.mscz") {
         const ptr = this.Module._malloc(data.length);
-        this.Module.HEAPU8.set(data, ptr);
-        this.Module._load(ptr, data.length);
-        this.Module._free(ptr);
+        try {
+            this.Module.HEAPU8.set(data, ptr);
+            this.Module.ccall("loadFile", null, ["string", "number", "number"], [fileName, ptr, data.length]);
+        } finally {
+            this.Module._free(ptr);
+        }
+    },
+
+    // Resolves with the current score encoded in the given format (e.g. "musicxml", "mxl", "mscz")
+    exportScore: function(format) {
+        const Module = this.Module;
+        return new Promise((resolve, reject) => {
+            const done = () => {
+                delete Module.onScoreExported;
+                delete Module.onScoreExportFailed;
+            };
+            Module.onScoreExported = (data) => { done(); resolve(data); };
+            Module.onScoreExportFailed = (message) => { done(); reject(new Error(message)); };
+            Module.ccall("exportScore", null, ["string"], [format]);
+        });
     },
 }
 

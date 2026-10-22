@@ -27,6 +27,7 @@
 #include "global/iinteractive.h"
 #include "actions/iactionsdispatcher.h"
 #include "context/iglobalcontext.h"
+#include "project/inotationwritersregister.h"
 
 namespace mu::webbridge {
 class WebApi : public muse::async::Asyncable
@@ -34,6 +35,7 @@ class WebApi : public muse::async::Asyncable
     inline static muse::GlobalInject<muse::IInteractive> interactive;
     inline static muse::GlobalInject<muse::actions::IActionsDispatcher> dispatcher;
     inline static muse::GlobalInject<mu::context::IGlobalContext> globalContext;
+    inline static muse::GlobalInject<mu::project::INotationWritersRegister> writers;
 
 public:
     WebApi() = default;
@@ -45,12 +47,21 @@ public:
 
     void onclickTest1(int num);
 
+    //! NOTE Opens an .mscz project; kept for callers of the original API
     void load(const void* source, unsigned int len);
+
+    //! NOTE Opens any registered format; the reader is chosen by the file name suffix
+    void loadFile(const std::string& fileName, const void* source, unsigned int len);
+
+    //! NOTE Writes the current score in the format named by the suffix (e.g. "musicxml", "mxl")
+    //! and reports the result through Module.onScoreExported or Module.onScoreExportFailed
+    void exportScore(const std::string& suffix);
 
 private:
 
     void onProjectSaved(const muse::io::path_t& path, mu::project::SaveMode mode);
 
     project::INotationProjectPtr m_currentProject;
+    muse::io::path_t m_lastLoadedPath;
 };
 }

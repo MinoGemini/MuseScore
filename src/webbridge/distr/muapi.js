@@ -5,6 +5,9 @@ const MuApi = {
     // Load score
     loadScoreFile: MuImpl.loadScoreFile,
     loadScoreData: MuImpl.loadScoreData,
+
+    // Export score
+    exportScore: MuImpl.exportScore,
 }
 
 async function createMuApi(config) {

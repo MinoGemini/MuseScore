@@ -29,4 +29,6 @@ using namespace mu::webbridge;
 extern "C" {
 void onclickTest1(int num) { WebApi::instance()->onclickTest1(num); }
 void load(const void* source, unsigned int len) { WebApi::instance()->load(source, len); }
+void loadFile(const char* fileName, const void* source, unsigned int len) { WebApi::instance()->loadFile(fileName, source, len); }
+void exportScore(const char* suffix) { WebApi::instance()->exportScore(suffix); }
 }

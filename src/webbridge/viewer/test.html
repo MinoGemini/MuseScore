@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MuseScore web test</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    #screen { width: 100%; height: calc(100% - 28px); }
+    #bar { height: 28px; display: flex; gap: 6px; align-items: center; padding: 0 6px; font: 12px sans-serif; }
+    #export-result { display: none; }
+  </style>
+</head>
+<body data-state="loading">
+  <div id="bar">
+    <button id="export-musicxml">Export MusicXML</button>
+    <button id="export-mxl">Export MXL</button>
+    <span id="export-status"></span>
+  </div>
+  <div id="screen"></div>
+  <pre id="export-result"></pre>
+  <script type="module">
+    import createMuApi from "./distr/muapi.js";
+    const params = new URLSearchParams(location.search);
+    const scoreUrl = params.get("score") || "test/score.mscz";
+    const scoreName = scoreUrl.split("/").pop();
+
+    async function runExport(format) {
+      const status = document.querySelector("#export-status");
+      const result = document.querySelector("#export-result");
+      try {
+        const bytes = await window.muapi.exportScore(format);
+        const head = format === "mxl"
+          ? Array.from(bytes.slice(0, 4)).map(b => b.toString(16).padStart(2, "0")).join(" ")
+          : new TextDecoder().decode(bytes);
+        result.textContent = head;
+        status.textContent = `${format}: ${bytes.length} bytes`;
+        result.dataset.state = "done";
+        // Offer the file the same way a user-facing export would.
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([bytes]));
+        a.download = `export.${format}`;
+        status.appendChild(a);
+      } catch (e) {
+        status.textContent = `${format}: ${e.message}`;
+        result.dataset.state = "failed";
+      }
+    }
+    document.querySelector("#export-musicxml").onclick = () => runExport("musicxml");
+    document.querySelector("#export-mxl").onclick = () => runExport("mxl");
+
+    window.muapi = await createMuApi({
+      screen: document.querySelector("#screen"),
+      onLoaded: async () => {
+        document.body.dataset.state = "app-ready";
+        setTimeout(async () => {
+          const data = new Uint8Array(await (await fetch(scoreUrl)).arrayBuffer());
+          window.muapi.loadScoreData(data, scoreName);
+          document.body.dataset.state = "score-requested";
+        }, 1500);
+      },
+      onExit: (e) => { document.body.dataset.state = "exited:" + e.code; },
+    });
+  </script>
+  <script src="MuseScoreStudio.js"></script>
+</body>
+</html>

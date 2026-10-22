@@ -37,3 +37,10 @@ copyFile(HERE+"/viewer/index.html", OUTPUT_DIR+"/MuseScoreStudio.html");
 // Copy tools
 copyFile(HERE+"/viewer/run_server.sh", OUTPUT_DIR+"/run_server.sh");
 
+// Copy the API test page and its fixture scores (open test.html?score=test/<file>)
+const ROOT = HERE + "/../.."
+copyFile(HERE+"/viewer/test.html", OUTPUT_DIR+"/test.html");
+fs.mkdirSync(OUTPUT_DIR+"/test", { recursive: true });
+copyFile(ROOT+"/vtest/scores/beams-21.mscz", OUTPUT_DIR+"/test/score.mscz");
+copyFile(ROOT+"/src/importexport/musicxml/tests/data/testBeams1.xml", OUTPUT_DIR+"/test/beams1.musicxml");
+
