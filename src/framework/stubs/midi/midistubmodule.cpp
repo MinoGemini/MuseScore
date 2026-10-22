@@ -24,6 +24,7 @@
 #include "modularity/ioc.h"
 
 #include "midiconfigurationstub.h"
+#include "midiportstub.h"
 
 using namespace muse::midi;
 using namespace muse::modularity;
@@ -36,4 +37,6 @@ std::string MidiModule::moduleName() const
 void MidiModule::registerExports()
 {
     ioc()->registerExport<IMidiConfiguration>(moduleName(), new MidiConfigurationStub());
+    ioc()->registerExport<IMidiOutPort>(moduleName(), new MidiOutPortStub());
+    ioc()->registerExport<IMidiInPort>(moduleName(), new MidiInPortStub());
 }
