@@ -21,7 +21,8 @@
  */
 #pragma once
 
-#include "istartupscenario.h"
+// GuiApp drives startup through this contract, so the web shell must implement it exactly.
+#include "appshell/internal/istartupscenario.h"
 
 #include "global/modularity/ioc.h"
 #include "global/iinteractive.h"
@@ -42,9 +43,11 @@ public:
     const project::ProjectFile& startupScoreFile() const override;
     void setStartupScoreFile(const std::optional<project::ProjectFile>& file) override;
 
-    void runOnSplashScreen() override;
+    muse::async::Promise<muse::Ret> runOnSplashScreen() override;
     void runAfterSplashScreen() override;
     bool startupCompleted() const override;
+
+    QList<QVariantMap> welcomeDialogData() const override;
 
 private:
 

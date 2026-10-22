@@ -47,8 +47,13 @@ void StartupScenario::setStartupScoreFile(const std::optional<project::ProjectFi
     NOT_IMPLEMENTED;
 }
 
-void StartupScenario::runOnSplashScreen()
+async::Promise<Ret> StartupScenario::runOnSplashScreen()
 {
+    // The web shell has no splash-time work (no plugins or update checks), so
+    // startup can continue to the main window immediately.
+    return async::make_promise<Ret>([](auto resolve, auto) {
+        return resolve(make_ret(Ret::Code::Ok));
+    });
 }
 
 void StartupScenario::runAfterSplashScreen()
@@ -61,4 +66,9 @@ void StartupScenario::runAfterSplashScreen()
 bool StartupScenario::startupCompleted() const
 {
     return m_startupCompleted;
+}
+
+QList<QVariantMap> StartupScenario::welcomeDialogData() const
+{
+    return {};
 }

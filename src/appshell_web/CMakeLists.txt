@@ -34,7 +34,6 @@ set(MODULE_SRC
     ${CMAKE_CURRENT_LIST_DIR}/internal/appshellconfiguration.h
     ${CMAKE_CURRENT_LIST_DIR}/internal/applicationactioncontroller.cpp
     ${CMAKE_CURRENT_LIST_DIR}/internal/applicationactioncontroller.h
-    ${CMAKE_CURRENT_LIST_DIR}/internal/istartupscenario.h
     ${CMAKE_CURRENT_LIST_DIR}/internal/startupscenario.cpp
     ${CMAKE_CURRENT_LIST_DIR}/internal/startupscenario.h
     ${CMAKE_CURRENT_LIST_DIR}/view/appmenumodel.cpp
